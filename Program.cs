@@ -6,6 +6,7 @@ using System.IO.Ports;
 using System.Text;
 using System.Threading;
 using System.IO;
+using NAudio.Wave;
 
 public class AR8600
 {
@@ -15,6 +16,7 @@ public class AR8600
     static int is_logger_on = 0;
     static FileStream file_stream = null;
     static StreamWriter stream_writer = null;
+    static WaveFileWriter waveFile;
 
     public static void Read()
     {
@@ -22,7 +24,7 @@ public class AR8600
         {
             try
             {
-                Console.WriteLine(_serialPort.ReadLine());
+                //Console.WriteLine(_serialPort.ReadLine());///////////////////////////////////////////////////////////////////////////////////
             }
             catch (TimeoutException) { }
         }
@@ -57,7 +59,6 @@ public class AR8600
             }
             catch (Exception e)
             {
-
                 Console.WriteLine(e.Message);
             }
             Console.WriteLine("Считывание завершено.");
@@ -103,7 +104,7 @@ public class AR8600
 
         try
         {
-            _serialPort.Open(); //Открыть com-port
+            //_serialPort.Open(); //Открыть com-port///////////////////////////////////////////////////////////////////////////////////
         }
         catch (Exception e)
         {
@@ -129,7 +130,8 @@ public class AR8600
             Console.WriteLine("5 - настроиться на частоту");
             Console.WriteLine("6 - настроить подключение сканера через com port (RS232)");
             Console.WriteLine("7 - включить ведение журнала (логирование)");
-            //Console.WriteLine("8 - посмотреть текущую частоту и её уровень");
+            Console.WriteLine("8 - записать до нажатия клавиши Enter");
+            //Console.WriteLine("9 - посмотреть текущую частоту и её уровень");
             Console.WriteLine("==========================================================");
             
             try
@@ -146,7 +148,7 @@ public class AR8600
             {
                 _continue = false;
                 data = Encoding.ASCII.GetBytes("EX\r"); //Перевести строку в байты
-                _serialPort.Write(data, 0, data.Length);
+                //_serialPort.Write(data, 0, data.Length);///////////////////////////////////////////////////////////////////////////////////
             }
             else
             {
@@ -229,7 +231,24 @@ public class AR8600
                         }
                         Console.Clear();
                         break;
-                    //case 8://8 - посмотреть текущую частоту и её уровень
+                    case 8://8 - записать до нажатия клавиши Enter
+                        Console.WriteLine("Записываю до нажатия клавиши Enter...");
+                        Send_to_logfile("Записываю до нажатия клавиши Enter");
+
+                        WaveInEvent waveSource = new WaveInEvent();
+                        waveSource.WaveFormat = new WaveFormat(44100, 1);
+                        waveSource.DataAvailable += new EventHandler<WaveInEventArgs>(waveSource_DataAvailable);
+                        string tempFile = ("test1.wav");
+                        waveFile = new WaveFileWriter(tempFile, waveSource.WaveFormat);
+                        waveSource.StartRecording();
+                        Console.WriteLine("Press enter to stop");
+                        Console.ReadLine();
+                        waveSource.StopRecording();
+                        waveFile.Dispose();
+
+                        Console.Clear();
+                        break;
+                    //case 9://9 - посмотреть текущую частоту и её уровень
                     //    data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
                     //    _serialPort.Write(data, 0, data.Length);
                     //    break;
@@ -375,6 +394,10 @@ public class AR8600
         {
             stream_writer.WriteLine(text);
         }
+    }
+    static void waveSource_DataAvailable(object sender, WaveInEventArgs e)
+    {
+        waveFile.WriteData(e.Buffer, 0, e.BytesRecorded);
     }
 
 }
