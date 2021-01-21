@@ -35,7 +35,7 @@ public class AR8600
     {
         _serialPort = new System.IO.Ports.SerialPort();
         Thread readThread = new Thread(Read);
-        string tmp_str, tmp_str_modulation, tmp_scan = "something";
+        string tmp_str, tmp_str_modulation, tmp_scan_f = "something", tmp_scan_m = "something";
         int choise = -1, tmp = -1, tmp_modulation = 0;
         StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
 
@@ -308,76 +308,171 @@ public class AR8600
                         Console.Clear();
                         break;
                     case 11://11 - запустить сканирование частот заданных в файле \"scan_list.txt\"
-                        using (FileStream fs3 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
+                        for (int i = 0; i < 3; i++)
                         {
-                            using (StreamReader sr3 = new StreamReader(fs3, Encoding.Unicode))
+                            using (FileStream fs3 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
                             {
-                                while (!sr3.EndOfStream)
+                                using (StreamReader sr3 = new StreamReader(fs3, Encoding.Unicode))
                                 {
-                                    tmp_scan = sr3.ReadLine(); //frequency
-                                    Console.WriteLine("считали частоту из файла: " + tmp_scan);
-                                    data = Encoding.ASCII.GetBytes("RF" + tmp_scan + "\r"); //Перевести строку в байты
-                                    _serialPort.Write(data, 0, data.Length);
-
-                                    tmp_scan = sr3.ReadLine(); //modulation
-                                    Console.WriteLine("считали модуляцию из файла: " + tmp_scan);
-                                    switch (tmp_scan)
+                                    while (!sr3.EndOfStream)
                                     {
-                                        case "WFM":
-                                            data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
+                                        tmp_scan_f = sr3.ReadLine(); //frequency
+                                        Console.WriteLine("считали частоту из файла: " + tmp_scan_f);
+                                        data = Encoding.ASCII.GetBytes("RF" + tmp_scan_f + "\r"); //Перевести строку в байты
+                                        _serialPort.Write(data, 0, data.Length);
+                                        Thread.Sleep(500);
+                                        data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
+                                        _serialPort.Write(data, 0, data.Length);
+                                        Thread.Sleep(500);
+                                        while (long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)) != long.Parse((tmp_scan_f.Replace(".",""))))
+                                        {
+                                            Console.WriteLine(long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)));
+                                            Console.WriteLine(long.Parse((tmp_scan_f.Replace(".", ""))));
+
+                                            Thread.Sleep(500);
+                                            data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
                                             _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "NFM":
-                                            data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
+
+                                            Thread.Sleep(500);
+                                            data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
                                             _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "AM":
-                                            data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "USB":
-                                            data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "LSB":
-                                            data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "CW":
-                                            data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "SFM":
-                                            data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "WAM":
-                                            data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        case "NAM":
-                                            data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
-                                            _serialPort.Write(data, 0, data.Length);
-                                            break;
-                                        default:
-                                            break;
+                                            
+                                            Thread.Sleep(500);
+                                            //Console.WriteLine("unswer.Substring(unswer.Length - 11) = " + unswer.Substring(unswer.Length - 11).Remove(10));
+                                            //Console.WriteLine("Считали из файла = " + tmp_scan_f.Replace(".", ""));
+                                        }
+                                        Thread.Sleep(500);
+                                        data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
+                                        _serialPort.Write(data, 0, data.Length);
+
+                                        tmp_scan_m = sr3.ReadLine(); //modulation
+                                        Console.WriteLine("считали модуляцию из файла: " + tmp_scan_m);
+                                        
+                                        switch (tmp_scan_m)
+                                        {
+                                            case "WFM":
+                                                while (unswer != "MD0\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "NFM":
+                                                while (unswer != "MD1\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "AM":
+                                                while (unswer != "MD2\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "USB":
+                                                while (unswer != "MD3\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "LSB":
+                                                while (unswer != "MD4\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "CW":
+                                                while (unswer != "MD5\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "SFM":
+                                                while (unswer != "MD6\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "WAM":
+                                                while (unswer != "MD7\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            case "NAM":
+                                                while (unswer != "MD8\r")
+                                                {
+                                                    data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                    _serialPort.Write(data, 0, data.Length);
+                                                    Thread.Sleep(500);
+                                                }
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                        
+                                            
+                                        
+                                        Thread.Sleep(500);
+
+                                        //show frequency and level
+                                        data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
+                                        _serialPort.Write(data, 0, data.Length);
+                                        Thread.Sleep(500);
+
+                                        Console.WriteLine("ответ сканера " + unswer);
+                                        data = Encoding.ASCII.GetBytes("\r"); //Перевести строку в байты
+                                        Thread.Sleep(500);
+
+                                        Console.Clear();
                                     }
 
-                                    //show frequency and level
 
-                                    data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
-                                    _serialPort.Write(data, 0, data.Length);
-
-                                    Console.WriteLine("ответ сканера" + unswer);
-                                    Console.ReadKey();
-
-                                    Console.Clear();
                                 }
-                                
-                                
                             }
                         }
-
 
                                 
                         break;
