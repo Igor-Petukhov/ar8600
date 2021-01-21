@@ -17,6 +17,7 @@ public class AR8600
     static FileStream file_stream = null;
     static StreamWriter stream_writer = null;
     static WaveFileWriter waveFile;
+    static string unswer = "";
 
     public static void Read()
     {
@@ -24,7 +25,8 @@ public class AR8600
         {
             try
             {
-                //Console.WriteLine(_serialPort.ReadLine());///////////////////////////////////////////////////////////////////////////////////
+               unswer = _serialPort.ReadLine();
+               Console.WriteLine(unswer);
             }
             catch (TimeoutException) { }
         }
@@ -33,8 +35,8 @@ public class AR8600
     {
         _serialPort = new System.IO.Ports.SerialPort();
         Thread readThread = new Thread(Read);
-        string tmp_str;
-        int choise = -1, tmp = -1;
+        string tmp_str, tmp_str_modulation, tmp_scan = "something";
+        int choise = -1, tmp = -1, tmp_modulation = 0;
         StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
 
         //Если существует конфигурационный файл - считаем настройки из него
@@ -104,7 +106,7 @@ public class AR8600
 
         try
         {
-            //_serialPort.Open(); //Открыть com-port///////////////////////////////////////////////////////////////////////////////////
+            _serialPort.Open(); //Открыть com-port
         }
         catch (Exception e)
         {
@@ -131,7 +133,9 @@ public class AR8600
             Console.WriteLine("6 - настроить подключение сканера через com port (RS232)");
             Console.WriteLine("7 - включить ведение журнала (логирование)");
             Console.WriteLine("8 - записать до нажатия клавиши Enter");
-            //Console.WriteLine("9 - посмотреть текущую частоту и её уровень");
+            Console.WriteLine("9 - вернуть частоту и уровень когда открыт шумодав");
+            Console.WriteLine("10 - задать режим модуляции");
+            Console.WriteLine("11 - запустить сканирование частот заданных в файле \"scan_list.txt\"");
             Console.WriteLine("==========================================================");
             
             try
@@ -148,7 +152,7 @@ public class AR8600
             {
                 _continue = false;
                 data = Encoding.ASCII.GetBytes("EX\r"); //Перевести строку в байты
-                //_serialPort.Write(data, 0, data.Length);///////////////////////////////////////////////////////////////////////////////////
+                _serialPort.Write(data, 0, data.Length);
             }
             else
             {
@@ -221,7 +225,7 @@ public class AR8600
                         {
                             case 1:
                                 is_logger_on = 1;
-                                file_stream = new FileStream("log.txt", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+                                file_stream = new FileStream("log.txt", FileMode.Create, FileAccess.Write, FileShare.Read);
                                 stream_writer = new StreamWriter(file_stream, Encoding.Unicode);
                                 break;
                             case 2:
@@ -248,10 +252,135 @@ public class AR8600
 
                         Console.Clear();
                         break;
-                    //case 9://9 - посмотреть текущую частоту и её уровень
-                    //    data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
-                    //    _serialPort.Write(data, 0, data.Length);
-                    //    break;
+                    case 9://9 - вернуть частоту и уровень когда открыт шумодав
+                        Send_to_logfile("Отправляю сканеру комманду LC1\\r вернуть частоту и уровень когда открыт шумодав");
+                        data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
+                        _serialPort.Write(data, 0, data.Length);
+                        break;
+                    case 10://10 - задать режим модуляции
+                        Console.WriteLine("Задать модуляцию:");
+                        Console.WriteLine("1 - WFM");
+                        Console.WriteLine("2 - NFM");
+                        Console.WriteLine("3 - AM");
+                        Console.WriteLine("4 - USB");
+                        Console.WriteLine("5 - LSB");
+                        Console.WriteLine("6 - CW");
+                        Console.WriteLine("7 - SFM");
+                        Console.WriteLine("8 - WAM");
+                        Console.WriteLine("9 - NAM");
+                        tmp_modulation = Int32.Parse(Console.ReadLine());
+                        switch (tmp_modulation)
+                        {
+                            case 1:
+                                tmp_str_modulation = "0";
+                                break;
+                            case 2:
+                                tmp_str_modulation = "1";
+                                break;
+                            case 3:
+                                tmp_str_modulation = "2";
+                                break;
+                            case 4:
+                                tmp_str_modulation = "3";
+                                break;
+                            case 5:
+                                tmp_str_modulation = "4";
+                                break;
+                            case 6:
+                                tmp_str_modulation = "5";
+                                break;
+                            case 7:
+                                tmp_str_modulation = "6";
+                                break;
+                            case 8:
+                                tmp_str_modulation = "7";
+                                break;
+                            case 9:
+                                tmp_str_modulation = "8";
+                                break;
+                            default:
+                                tmp_str_modulation = "";
+                                break;
+                        }
+                        Send_to_logfile("Отправляю сканеру комманду MD" + tmp_str_modulation + "\\r задать режим модуляции");
+                        data = Encoding.ASCII.GetBytes("MD" + tmp_str_modulation + "\r"); //Перевести строку в байты
+                        _serialPort.Write(data, 0, data.Length);
+                        Console.Clear();
+                        break;
+                    case 11://11 - запустить сканирование частот заданных в файле \"scan_list.txt\"
+                        using (FileStream fs3 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            using (StreamReader sr3 = new StreamReader(fs3, Encoding.Unicode))
+                            {
+                                while (!sr3.EndOfStream)
+                                {
+                                    tmp_scan = sr3.ReadLine(); //frequency
+                                    Console.WriteLine("считали частоту из файла: " + tmp_scan);
+                                    data = Encoding.ASCII.GetBytes("RF" + tmp_scan + "\r"); //Перевести строку в байты
+                                    _serialPort.Write(data, 0, data.Length);
+
+                                    tmp_scan = sr3.ReadLine(); //modulation
+                                    Console.WriteLine("считали модуляцию из файла: " + tmp_scan);
+                                    switch (tmp_scan)
+                                    {
+                                        case "WFM":
+                                            data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "NFM":
+                                            data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "AM":
+                                            data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "USB":
+                                            data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "LSB":
+                                            data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "CW":
+                                            data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "SFM":
+                                            data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "WAM":
+                                            data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        case "NAM":
+                                            data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
+                                            _serialPort.Write(data, 0, data.Length);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+
+                                    //show frequency and level
+
+                                    data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
+                                    _serialPort.Write(data, 0, data.Length);
+
+                                    Console.WriteLine("ответ сканера" + unswer);
+                                    Console.ReadKey();
+
+                                    Console.Clear();
+                                }
+                                
+                                
+                            }
+                        }
+
+
+                                
+                        break;
                     default:
                         break;
                 }
@@ -392,7 +521,7 @@ public class AR8600
     {
         if (is_logger_on == 1)
         {
-            stream_writer.WriteLine(text);
+            stream_writer.WriteLine(DateTime.Now.ToString() + " " + text);
         }
     }
     static void waveSource_DataAvailable(object sender, WaveInEventArgs e)
