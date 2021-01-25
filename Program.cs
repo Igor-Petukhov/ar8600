@@ -36,7 +36,7 @@ public class AR8600
         _serialPort = new System.IO.Ports.SerialPort();
         Thread readThread = new Thread(Read);
         string tmp_str, tmp_str_modulation, tmp_scan_f = "something", tmp_scan_m = "something";
-        int choise = -1, tmp = -1, tmp_modulation = 0;
+        int choise = -1, tmp = -1, tmp_modulation = 0, time_delay = 800;
         StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
 
         //Если существует конфигурационный файл - считаем настройки из него
@@ -117,6 +117,10 @@ public class AR8600
         
         _continue = true;
         readThread.Start();
+
+        WaveInEvent waveSource = new WaveInEvent();
+        waveSource.WaveFormat = new WaveFormat(44100, 1);
+        waveSource.DataAvailable += new EventHandler<WaveInEventArgs>(waveSource_DataAvailable);
 
         while (_continue)
         {
@@ -239,11 +243,8 @@ public class AR8600
                         Console.WriteLine("Записываю до нажатия клавиши Enter...");
                         Send_to_logfile("Записываю до нажатия клавиши Enter");
 
-                        WaveInEvent waveSource = new WaveInEvent();
-                        waveSource.WaveFormat = new WaveFormat(44100, 1);
-                        waveSource.DataAvailable += new EventHandler<WaveInEventArgs>(waveSource_DataAvailable);
-                        string tempFile = ("test1.wav");
-                        waveFile = new WaveFileWriter(tempFile, waveSource.WaveFormat);
+                        
+                        waveFile = new WaveFileWriter("test.wav", waveSource.WaveFormat);
                         waveSource.StartRecording();
                         Console.WriteLine("Press enter to stop");
                         Console.ReadLine();
@@ -308,6 +309,7 @@ public class AR8600
                         Console.Clear();
                         break;
                     case 11://11 - запустить сканирование частот заданных в файле \"scan_list.txt\"
+                        Directory.CreateDirectory("Recordings");
                         for (int i = 0; i < 3; i++)
                         {
                             using (FileStream fs3 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -316,35 +318,40 @@ public class AR8600
                                 {
                                     while (!sr3.EndOfStream)
                                     {
+
+                                        //Устанавливаем частоту
+                                        ////////////////////////
                                         tmp_scan_f = sr3.ReadLine(); //frequency
                                         Console.WriteLine("считали частоту из файла: " + tmp_scan_f);
                                         data = Encoding.ASCII.GetBytes("RF" + tmp_scan_f + "\r"); //Перевести строку в байты
                                         _serialPort.Write(data, 0, data.Length);
-                                        Thread.Sleep(500);
+                                        Thread.Sleep(time_delay);
                                         data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
                                         _serialPort.Write(data, 0, data.Length);
-                                        Thread.Sleep(500);
+                                        Thread.Sleep(time_delay);
                                         while (long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)) != long.Parse((tmp_scan_f.Replace(".",""))))
                                         {
                                             Console.WriteLine(long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)));
                                             Console.WriteLine(long.Parse((tmp_scan_f.Replace(".", ""))));
 
-                                            Thread.Sleep(500);
+                                            Thread.Sleep(time_delay);
                                             data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
                                             _serialPort.Write(data, 0, data.Length);
 
-                                            Thread.Sleep(500);
+                                            Thread.Sleep(time_delay);
                                             data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
                                             _serialPort.Write(data, 0, data.Length);
                                             
-                                            Thread.Sleep(500);
+                                            Thread.Sleep(time_delay);
                                             //Console.WriteLine("unswer.Substring(unswer.Length - 11) = " + unswer.Substring(unswer.Length - 11).Remove(10));
                                             //Console.WriteLine("Считали из файла = " + tmp_scan_f.Replace(".", ""));
                                         }
-                                        Thread.Sleep(500);
+                                        Thread.Sleep(time_delay);
                                         data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
                                         _serialPort.Write(data, 0, data.Length);
 
+                                        //Устанавливаем модуляцию
+                                        ////////////////////////////
                                         tmp_scan_m = sr3.ReadLine(); //modulation
                                         Console.WriteLine("считали модуляцию из файла: " + tmp_scan_m);
                                         
@@ -355,10 +362,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "NFM":
@@ -366,10 +373,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "AM":
@@ -377,10 +384,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "USB":
@@ -388,10 +395,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "LSB":
@@ -399,10 +406,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "CW":
@@ -410,10 +417,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "SFM":
@@ -421,10 +428,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "WAM":
@@ -432,10 +439,10 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             case "NAM":
@@ -443,28 +450,35 @@ public class AR8600
                                                 {
                                                     data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                     data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
                                                     _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(500);
+                                                    Thread.Sleep(time_delay);
                                                 }
                                                 break;
                                             default:
                                                 break;
                                         }
                                         
-                                            
-                                        
-                                        Thread.Sleep(500);
-
+                                        Thread.Sleep(time_delay);
                                         //show frequency and level
                                         data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
                                         _serialPort.Write(data, 0, data.Length);
-                                        Thread.Sleep(500);
-
+                                        Thread.Sleep(time_delay);
                                         Console.WriteLine("ответ сканера " + unswer);
                                         data = Encoding.ASCII.GetBytes("\r"); //Перевести строку в байты
-                                        Thread.Sleep(500);
+                                        Thread.Sleep(time_delay);
+
+
+                                        //Записываем звук 3 секунды
+                                        ///////////////////////////
+                                        Console.WriteLine("-------start audio recording for 3 seconds------");
+                                        
+                                        waveFile = new WaveFileWriter("Recordings\\" + tmp_scan_f + "MHz_" + DateTime.Now.ToString().Replace(" ", "_").Replace(":","'") + ".wav", waveSource.WaveFormat);
+                                        waveSource.StartRecording();
+                                        Thread.Sleep(3000);
+                                        waveSource.StopRecording();
+                                        waveFile.Dispose();
 
                                         Console.Clear();
                                     }
