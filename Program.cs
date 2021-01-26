@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using System.IO;
 using NAudio.Wave;
+using System.Collections.Generic;
+using ar8600;
 
 public class AR8600
 {
@@ -18,6 +20,8 @@ public class AR8600
     static StreamWriter stream_writer = null;
     static WaveFileWriter waveFile;
     static string unswer = "";
+    static string tmp_channel_freq, tmp_channel_modulation, tmp_channel_att, tmp_channel_squelch;
+    static List<Channel> freq_base = new List<Channel>(); //динамический массив для хранения списка частот и их параметров для режима сканирования
 
     public static void Read()
     {
@@ -25,8 +29,8 @@ public class AR8600
         {
             try
             {
-               unswer = _serialPort.ReadLine();
-               Console.WriteLine(unswer);
+                unswer = _serialPort.ReadLine();
+                Console.WriteLine(unswer);
             }
             catch (TimeoutException) { }
         }
@@ -36,8 +40,9 @@ public class AR8600
         _serialPort = new System.IO.Ports.SerialPort();
         Thread readThread = new Thread(Read);
         string tmp_str, tmp_str_modulation, tmp_scan_f = "something", tmp_scan_m = "something";
-        int choise = -1, tmp = -1, tmp_modulation = 0, time_delay = 800;
+        int choise = -1, tmp = -1, tmp_modulation = 0, time_delay = 800, tmp_choise;
         StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
+        Channel tmp_channel;
 
         //Если существует конфигурационный файл - считаем настройки из него
         if (File.Exists("settings.txt"))
@@ -114,7 +119,7 @@ public class AR8600
             Console.ReadKey();
             return;
         }
-        
+
         _continue = true;
         readThread.Start();
 
@@ -140,8 +145,11 @@ public class AR8600
             Console.WriteLine("9 - вернуть частоту и уровень когда открыт шумодав");
             Console.WriteLine("10 - задать режим модуляции");
             Console.WriteLine("11 - запустить сканирование частот заданных в файле \"scan_list.txt\"");
+            Console.WriteLine("12 - создать список частот для сканирования (файл \"scan_list.txt\")");
+            Console.WriteLine("13 - включить аттенюатор");
+            Console.WriteLine("14 - отключить аттенюатор");
             Console.WriteLine("==========================================================");
-            
+
             try
             {
                 choise = Int32.Parse(Console.ReadLine());
@@ -243,7 +251,7 @@ public class AR8600
                         Console.WriteLine("Записываю до нажатия клавиши Enter...");
                         Send_to_logfile("Записываю до нажатия клавиши Enter");
 
-                        
+
                         waveFile = new WaveFileWriter("test.wav", waveSource.WaveFormat);
                         waveSource.StartRecording();
                         Console.WriteLine("Press enter to stop");
@@ -309,193 +317,240 @@ public class AR8600
                         Console.Clear();
                         break;
                     case 11://11 - запустить сканирование частот заданных в файле \"scan_list.txt\"
-                        Directory.CreateDirectory("Recordings");
-                        for (int i = 0; i < 3; i++)
+                        if (File.Exists("scan_list.txt"))
                         {
-                            using (FileStream fs3 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
+                            ReadFrequencyBase(); //Запустили метод, который считывает из файла частоты в глобальный список в ОЗУ
+
+                            Directory.CreateDirectory("Recordings");
+                            for (int i = 0; i < 9999; i++)
                             {
-                                using (StreamReader sr3 = new StreamReader(fs3, Encoding.Unicode))
+                                foreach (Channel item in freq_base)
                                 {
-                                    while (!sr3.EndOfStream)
+                                    //Устанавливаем частоту
+                                    ////////////////////////
+                                    Console.WriteLine("Set freq: " + item.Frequency);
+                                    data = Encoding.ASCII.GetBytes("RF" + item.Frequency + "\r"); //Перевести строку в байты
+                                    Console.WriteLine("RF" + item.Frequency + "\r");
+                                    _serialPort.Write(data, 0, data.Length);
+                                    Thread.Sleep(time_delay);
+                                    data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
+                                    _serialPort.Write(data, 0, data.Length);
+                                    Thread.Sleep(time_delay);
+                                    while (long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)) != long.Parse((item.Frequency.Replace(".", ""))))
                                     {
+                                        Console.WriteLine(long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)));
+                                        Console.WriteLine(long.Parse((item.Frequency.Replace(".", ""))));
 
-                                        //Устанавливаем частоту
-                                        ////////////////////////
-                                        tmp_scan_f = sr3.ReadLine(); //frequency
-                                        Console.WriteLine("считали частоту из файла: " + tmp_scan_f);
-                                        data = Encoding.ASCII.GetBytes("RF" + tmp_scan_f + "\r"); //Перевести строку в байты
-                                        _serialPort.Write(data, 0, data.Length);
-                                        Thread.Sleep(time_delay);
-                                        data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
-                                        _serialPort.Write(data, 0, data.Length);
-                                        Thread.Sleep(time_delay);
-                                        while (long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)) != long.Parse((tmp_scan_f.Replace(".",""))))
-                                        {
-                                            Console.WriteLine(long.Parse(unswer.Substring(unswer.Length - 11).Remove(9)));
-                                            Console.WriteLine(long.Parse((tmp_scan_f.Replace(".", ""))));
-
-                                            Thread.Sleep(time_delay);
-                                            data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
-                                            _serialPort.Write(data, 0, data.Length);
-
-                                            Thread.Sleep(time_delay);
-                                            data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
-                                            _serialPort.Write(data, 0, data.Length);
-                                            
-                                            Thread.Sleep(time_delay);
-                                            //Console.WriteLine("unswer.Substring(unswer.Length - 11) = " + unswer.Substring(unswer.Length - 11).Remove(10));
-                                            //Console.WriteLine("Считали из файла = " + tmp_scan_f.Replace(".", ""));
-                                        }
                                         Thread.Sleep(time_delay);
                                         data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
                                         _serialPort.Write(data, 0, data.Length);
 
-                                        //Устанавливаем модуляцию
-                                        ////////////////////////////
-                                        tmp_scan_m = sr3.ReadLine(); //modulation
-                                        Console.WriteLine("считали модуляцию из файла: " + tmp_scan_m);
-                                        
-                                        switch (tmp_scan_m)
-                                        {
-                                            case "WFM":
-                                                while (unswer != "MD0\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "NFM":
-                                                while (unswer != "MD1\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "AM":
-                                                while (unswer != "MD2\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "USB":
-                                                while (unswer != "MD3\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "LSB":
-                                                while (unswer != "MD4\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "CW":
-                                                while (unswer != "MD5\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "SFM":
-                                                while (unswer != "MD6\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "WAM":
-                                                while (unswer != "MD7\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            case "NAM":
-                                                while (unswer != "MD8\r")
-                                                {
-                                                    data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                    data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
-                                                    _serialPort.Write(data, 0, data.Length);
-                                                    Thread.Sleep(time_delay);
-                                                }
-                                                break;
-                                            default:
-                                                break;
-                                        }
-                                        
                                         Thread.Sleep(time_delay);
-                                        //show frequency and level
-                                        data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
+                                        data = Encoding.ASCII.GetBytes("LC1\r"); //просим показать нам установленную частоту и уровень
                                         _serialPort.Write(data, 0, data.Length);
+
                                         Thread.Sleep(time_delay);
-                                        Console.WriteLine("ответ сканера " + unswer);
-                                        data = Encoding.ASCII.GetBytes("\r"); //Перевести строку в байты
-                                        Thread.Sleep(time_delay);
+                                        //Console.WriteLine("unswer.Substring(unswer.Length - 11) = " + unswer.Substring(unswer.Length - 11).Remove(10));
+                                        //Console.WriteLine("Считали из файла = " + tmp_scan_f.Replace(".", ""));
+                                    }
+                                    Thread.Sleep(time_delay);
+                                    data = Encoding.ASCII.GetBytes("LC0\r"); //отключаем показывание частоты при превышении сквелча
+                                    _serialPort.Write(data, 0, data.Length);
+
+                                    //Устанавливаем модуляцию
+                                    ////////////////////////////
+                                    Console.WriteLine("Set modulation: " + item.Modulation);
+
+                                    switch (item.Modulation)
+                                    {
+                                        case "WFM":
+                                            while (unswer != "MD0\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD0\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "NFM":
+                                            while (unswer != "MD1\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD1\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "AM":
+                                            while (unswer != "MD2\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD2\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "USB":
+                                            while (unswer != "MD3\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD3\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "LSB":
+                                            while (unswer != "MD4\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD4\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "CW":
+                                            while (unswer != "MD5\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD5\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "SFM":
+                                            while (unswer != "MD6\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD6\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "WAM":
+                                            while (unswer != "MD7\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD7\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        case "NAM":
+                                            while (unswer != "MD8\r")
+                                            {
+                                                data = Encoding.ASCII.GetBytes("MD8\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                                data = Encoding.ASCII.GetBytes("MD\r"); //Перевести строку в байты
+                                                _serialPort.Write(data, 0, data.Length);
+                                                Thread.Sleep(time_delay);
+                                            }
+                                            break;
+                                        default:
+                                            break;
+                                    }
+
+                                    Thread.Sleep(time_delay);
 
 
-                                        //Записываем звук 3 секунды
-                                        ///////////////////////////
+                                    //show frequency and level
+                                    data = Encoding.ASCII.GetBytes("LC1\r"); //Перевести строку в байты
+                                    _serialPort.Write(data, 0, data.Length);
+                                    Thread.Sleep(time_delay);
+                                    Console.WriteLine("ответ сканера " + unswer);
+                                    
+
+                                    //Записываем звук 3 секунды если уровень сигнала выше заданного в базе
+                                    ///////////////////////////
+                                    
+                                    if (Int32.Parse(item.Squelch) < Int32.Parse(unswer.Substring(2, 3)))
+                                    {
                                         Console.WriteLine("-------start audio recording for 3 seconds------");
-                                        
-                                        waveFile = new WaveFileWriter("Recordings\\" + tmp_scan_f + "MHz_" + DateTime.Now.ToString().Replace(" ", "_").Replace(":","'") + ".wav", waveSource.WaveFormat);
+
+                                        waveFile = new WaveFileWriter("Recordings\\" + item.Frequency + "MHz_" + DateTime.Now.ToString().Replace(" ", "_").Replace(":", "'") + ".wav", waveSource.WaveFormat);
                                         waveSource.StartRecording();
                                         Thread.Sleep(3000);
                                         waveSource.StopRecording();
                                         waveFile.Dispose();
-
-                                        Console.Clear();
                                     }
 
+                                    Thread.Sleep(time_delay);
+                                    data = Encoding.ASCII.GetBytes("LC0\r"); //Перевести строку в байты
+                                    _serialPort.Write(data, 0, data.Length);
+                                    Thread.Sleep(time_delay);
 
+                                    Console.Clear();
                                 }
                             }
                         }
+                        else
+                        {
+                            Console.WriteLine("Не могу найти файл \"scan_list.txt\"");
+                            Console.ReadKey();
+                            Console.Clear();
+                        }
 
-                                
+
+                        break;
+                    case 12: //12 - создать список частот для сканирования (файл \"scan_list.txt\")
+                        tmp_choise = 1;
+                        while (tmp_choise == 1)
+                        {
+                            Console.Clear();
+                            Console.WriteLine("Вы хотите добавить частоту?\n1 - да\n2 - нет");
+                            tmp_choise = Int32.Parse(Console.ReadLine());
+                            Console.Clear();
+                            if (tmp_choise == 1)
+                                AddFrequencyToFreqBase();
+                        }
+                        using (FileStream fs = new FileStream("scan_list.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
+                        {
+                            using (StreamWriter sw = new StreamWriter(fs, Encoding.Unicode))
+                            {
+                                foreach (Channel item in freq_base)
+                                {
+                                    sw.WriteLine(item.Frequency);
+                                    sw.WriteLine(item.Modulation);
+                                    sw.WriteLine(item.Attenuation);
+                                    sw.WriteLine(item.Squelch);
+                                }
+                            }
+                        }
+                        Console.WriteLine("Список частот для сканирования (файл \"scan_list.txt\") создан.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        Console.Clear();
+                        break;
+                    case 13:
+                        data = Encoding.ASCII.GetBytes("AT1\r"); //Перевести строку в байты
+                        _serialPort.Write(data, 0, data.Length);
+                        break;
+                    case 14:
+                        data = Encoding.ASCII.GetBytes("AT0\r"); //Перевести строку в байты
+                        _serialPort.Write(data, 0, data.Length);
                         break;
                     default:
                         break;
                 }
-                
+
             }
-            
+
         }
         readThread.Join();
         _serialPort.Close();
@@ -636,6 +691,47 @@ public class AR8600
     static void waveSource_DataAvailable(object sender, WaveInEventArgs e)
     {
         waveFile.WriteData(e.Buffer, 0, e.BytesRecorded);
+    }
+
+    static void AddFrequencyToFreqBase()
+    {
+        Console.WriteLine("Создаём частоту/канал для сканирования.");
+        Console.WriteLine("=================================");
+        Console.WriteLine("Введите частоту в МГц формата: NNNN.NNNNA, где A = \"5\" (частота будет кончаться на 50 Гц) или А = \"0\".");
+        tmp_channel_freq = Console.ReadLine();
+        Console.WriteLine("Введите модуляцию в формате: WFM NFM AM USB LSB CW SFM WAM NAM");
+        tmp_channel_modulation = Console.ReadLine();
+        Console.WriteLine("Нужна аттенюация? \nAT0 - нет\nAT1 - да");
+        tmp_channel_att = Console.ReadLine();
+        Console.WriteLine("Введите уровень срабатывания на запись от 0 до 255 (squelch): ");
+        tmp_channel_squelch = Console.ReadLine();
+
+        freq_base.Add(new Channel(tmp_channel_freq, tmp_channel_modulation, tmp_channel_att, tmp_channel_squelch));
+    }
+
+    static void ReadFrequencyBase()
+    {
+        try
+        {
+            using (FileStream fs4 = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                using (StreamReader sr4 = new StreamReader(fs4, Encoding.Unicode))
+                {
+                    while (!sr4.EndOfStream)
+                    {
+                        tmp_channel_freq = sr4.ReadLine();
+                        tmp_channel_modulation = sr4.ReadLine();
+                        tmp_channel_att = sr4.ReadLine();
+                        tmp_channel_squelch = sr4.ReadLine();
+                        freq_base.Add(new Channel(tmp_channel_freq, tmp_channel_modulation, tmp_channel_att, tmp_channel_squelch));
+                    }
+                }
+            }
+        }
+        catch (Exception ExReadFreqBase)
+        {
+            Console.WriteLine(ExReadFreqBase.Message);
+        }
     }
 
 }
