@@ -37,22 +37,23 @@ namespace ar8600
             this.label_set_parameters = new System.Windows.Forms.Label();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.groupBox_manual_control = new System.Windows.Forms.GroupBox();
             this.numericUpDown = new System.Windows.Forms.NumericUpDown();
             this.button_connect = new System.Windows.Forms.Button();
             this.button_turn_off = new System.Windows.Forms.Button();
             this.button_disconnect = new System.Windows.Forms.Button();
-            this.groupBox_frequency = new System.Windows.Forms.GroupBox();
-            this.groupBox_sound_recording = new System.Windows.Forms.GroupBox();
             this.button_start_rec = new System.Windows.Forms.Button();
             this.button_stop_rec = new System.Windows.Forms.Button();
+            this.groupBox_manual_control = new System.Windows.Forms.GroupBox();
+            this.groupBox_sound_recording = new System.Windows.Forms.GroupBox();
             this.label_rec = new System.Windows.Forms.Label();
+            this.groupBox_frequency = new System.Windows.Forms.GroupBox();
+            this.button_get_status = new System.Windows.Forms.Button();
             this.groupBox_settings.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.groupBox_manual_control.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown)).BeginInit();
-            this.groupBox_frequency.SuspendLayout();
+            this.groupBox_manual_control.SuspendLayout();
             this.groupBox_sound_recording.SuspendLayout();
+            this.groupBox_frequency.SuspendLayout();
             this.SuspendLayout();
             // 
             // button_set_rs232
@@ -113,20 +114,6 @@ namespace ar8600
             this.pictureBox1.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox1, "Внешний вид сканера AR8600");
             // 
-            // groupBox_manual_control
-            // 
-            this.groupBox_manual_control.Controls.Add(this.groupBox_sound_recording);
-            this.groupBox_manual_control.Controls.Add(this.groupBox_frequency);
-            this.groupBox_manual_control.Controls.Add(this.button_disconnect);
-            this.groupBox_manual_control.Controls.Add(this.button_turn_off);
-            this.groupBox_manual_control.Controls.Add(this.button_connect);
-            this.groupBox_manual_control.Location = new System.Drawing.Point(12, 134);
-            this.groupBox_manual_control.Name = "groupBox_manual_control";
-            this.groupBox_manual_control.Size = new System.Drawing.Size(484, 173);
-            this.groupBox_manual_control.TabIndex = 4;
-            this.groupBox_manual_control.TabStop = false;
-            this.groupBox_manual_control.Text = "Ручное (пошаговое) управление";
-            // 
             // numericUpDown
             // 
             this.numericUpDown.DecimalPlaces = 4;
@@ -162,6 +149,7 @@ namespace ar8600
             this.button_turn_off.Text = "Выкл сканер";
             this.toolTip1.SetToolTip(this.button_turn_off, "Отправить команду сканеру \"Отключить питание\"");
             this.button_turn_off.UseVisualStyleBackColor = true;
+            this.button_turn_off.Click += new System.EventHandler(this.button_turn_off_Click);
             // 
             // button_disconnect
             // 
@@ -172,28 +160,7 @@ namespace ar8600
             this.button_disconnect.Text = "Отключиться";
             this.toolTip1.SetToolTip(this.button_disconnect, "Закрыть соединение через СОМ порт");
             this.button_disconnect.UseVisualStyleBackColor = true;
-            // 
-            // groupBox_frequency
-            // 
-            this.groupBox_frequency.Controls.Add(this.numericUpDown);
-            this.groupBox_frequency.Location = new System.Drawing.Point(6, 91);
-            this.groupBox_frequency.Name = "groupBox_frequency";
-            this.groupBox_frequency.Size = new System.Drawing.Size(338, 76);
-            this.groupBox_frequency.TabIndex = 4;
-            this.groupBox_frequency.TabStop = false;
-            this.groupBox_frequency.Text = "Частота/канал";
-            // 
-            // groupBox_sound_recording
-            // 
-            this.groupBox_sound_recording.Controls.Add(this.label_rec);
-            this.groupBox_sound_recording.Controls.Add(this.button_stop_rec);
-            this.groupBox_sound_recording.Controls.Add(this.button_start_rec);
-            this.groupBox_sound_recording.Location = new System.Drawing.Point(134, 19);
-            this.groupBox_sound_recording.Name = "groupBox_sound_recording";
-            this.groupBox_sound_recording.Size = new System.Drawing.Size(210, 71);
-            this.groupBox_sound_recording.TabIndex = 5;
-            this.groupBox_sound_recording.TabStop = false;
-            this.groupBox_sound_recording.Text = "Запись звука";
+            this.button_disconnect.Click += new System.EventHandler(this.button_disconnect_Click);
             // 
             // button_start_rec
             // 
@@ -218,6 +185,32 @@ namespace ar8600
             this.button_stop_rec.UseVisualStyleBackColor = true;
             this.button_stop_rec.Click += new System.EventHandler(this.button_stop_rec_Click);
             // 
+            // groupBox_manual_control
+            // 
+            this.groupBox_manual_control.Controls.Add(this.groupBox_sound_recording);
+            this.groupBox_manual_control.Controls.Add(this.groupBox_frequency);
+            this.groupBox_manual_control.Controls.Add(this.button_disconnect);
+            this.groupBox_manual_control.Controls.Add(this.button_turn_off);
+            this.groupBox_manual_control.Controls.Add(this.button_connect);
+            this.groupBox_manual_control.Location = new System.Drawing.Point(12, 134);
+            this.groupBox_manual_control.Name = "groupBox_manual_control";
+            this.groupBox_manual_control.Size = new System.Drawing.Size(484, 173);
+            this.groupBox_manual_control.TabIndex = 4;
+            this.groupBox_manual_control.TabStop = false;
+            this.groupBox_manual_control.Text = "Ручное (пошаговое) управление";
+            // 
+            // groupBox_sound_recording
+            // 
+            this.groupBox_sound_recording.Controls.Add(this.label_rec);
+            this.groupBox_sound_recording.Controls.Add(this.button_stop_rec);
+            this.groupBox_sound_recording.Controls.Add(this.button_start_rec);
+            this.groupBox_sound_recording.Location = new System.Drawing.Point(134, 19);
+            this.groupBox_sound_recording.Name = "groupBox_sound_recording";
+            this.groupBox_sound_recording.Size = new System.Drawing.Size(210, 71);
+            this.groupBox_sound_recording.TabIndex = 5;
+            this.groupBox_sound_recording.TabStop = false;
+            this.groupBox_sound_recording.Text = "Запись звука";
+            // 
             // label_rec
             // 
             this.label_rec.AutoSize = true;
@@ -227,12 +220,35 @@ namespace ar8600
             this.label_rec.Name = "label_rec";
             this.label_rec.Size = new System.Drawing.Size(0, 13);
             this.label_rec.TabIndex = 2;
+            this.toolTip1.SetToolTip(this.label_rec, "Сейчас происходит запись звука в аудиофайл");
+            // 
+            // groupBox_frequency
+            // 
+            this.groupBox_frequency.Controls.Add(this.numericUpDown);
+            this.groupBox_frequency.Location = new System.Drawing.Point(6, 91);
+            this.groupBox_frequency.Name = "groupBox_frequency";
+            this.groupBox_frequency.Size = new System.Drawing.Size(338, 76);
+            this.groupBox_frequency.TabIndex = 4;
+            this.groupBox_frequency.TabStop = false;
+            this.groupBox_frequency.Text = "Частота/канал";
+            // 
+            // button_get_status
+            // 
+            this.button_get_status.Location = new System.Drawing.Point(275, 355);
+            this.button_get_status.Name = "button_get_status";
+            this.button_get_status.Size = new System.Drawing.Size(75, 59);
+            this.button_get_status.TabIndex = 6;
+            this.button_get_status.Text = "Получить текущие данные";
+            this.toolTip1.SetToolTip(this.button_get_status, "Сканер вернёт текущие данные");
+            this.button_get_status.UseVisualStyleBackColor = true;
+            this.button_get_status.Click += new System.EventHandler(this.button_get_status_Click);
             // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(508, 450);
+            this.Controls.Add(this.button_get_status);
             this.Controls.Add(this.groupBox_manual_control);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.groupBox_settings);
@@ -243,11 +259,11 @@ namespace ar8600
             this.groupBox_settings.ResumeLayout(false);
             this.groupBox_settings.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.groupBox_manual_control.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown)).EndInit();
-            this.groupBox_frequency.ResumeLayout(false);
+            this.groupBox_manual_control.ResumeLayout(false);
             this.groupBox_sound_recording.ResumeLayout(false);
             this.groupBox_sound_recording.PerformLayout();
+            this.groupBox_frequency.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -270,5 +286,6 @@ namespace ar8600
         private System.Windows.Forms.Button button_stop_rec;
         private System.Windows.Forms.Button button_start_rec;
         private System.Windows.Forms.Label label_rec;
+        private System.Windows.Forms.Button button_get_status;
     }
 }
