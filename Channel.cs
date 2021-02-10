@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace ar8600
 {
-    class Channel
+    public class Channel : ICloneable
     {
-        public string Frequency { get; set; }
+        public decimal Frequency { get; set; }
         public string Modulation { get; set; }
         public string Attenuation { get; set; }
-        public string Squelch { get; set; }
+        public int Squelch { get; set; }
 
-        public Channel(string freq, string mod, string att, string squel)
+        public Channel(decimal freq, string mod, string att, int squel)
         {
             Frequency = freq;
             Modulation = mod;
@@ -23,7 +23,15 @@ namespace ar8600
 
         public Channel()
         {
+            Frequency = 100;
+            Modulation = "";
+            Attenuation = "AT0";
+            //Squelch;
+        }
 
+        public object Clone()
+        {
+            return this.MemberwiseClone();
         }
     }
 }

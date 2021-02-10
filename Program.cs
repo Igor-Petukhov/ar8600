@@ -704,7 +704,7 @@ public class AR8600
         Console.WriteLine("Введите уровень срабатывания на запись от 0 до 255 (squelch): ");
         tmp_channel_squelch = Console.ReadLine();
 
-        freq_base.Add(new Channel(tmp_channel_freq, tmp_channel_modulation, tmp_channel_att, tmp_channel_squelch));
+        freq_base.Add(new Channel(decimal.Parse(tmp_channel_freq), tmp_channel_modulation, tmp_channel_att,Int32.Parse(tmp_channel_squelch)));
     }
 
     static void ReadFrequencyBase()
@@ -721,7 +721,7 @@ public class AR8600
                         tmp_channel_modulation = sr4.ReadLine();
                         tmp_channel_att = sr4.ReadLine();
                         tmp_channel_squelch = sr4.ReadLine();
-                        freq_base.Add(new Channel(tmp_channel_freq, tmp_channel_modulation, tmp_channel_att, tmp_channel_squelch));
+                        freq_base.Add(new Channel(decimal.Parse(tmp_channel_freq), tmp_channel_modulation, tmp_channel_att, Int32.Parse(tmp_channel_squelch)));
                     }
                 }
             }
