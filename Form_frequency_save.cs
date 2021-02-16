@@ -14,11 +14,13 @@ namespace ar8600
     public partial class Form_frequency_save : Form
     {
         public Channel channel_global { get; set; }
-        public Form_frequency_save(Channel channel)
+        private string file_name;
+        public Form_frequency_save(Channel channel, string file_name_in)
         {
             InitializeComponent();
 
             channel_global = (Channel)channel.Clone();
+            this.file_name = file_name_in;
 
             try
             {
@@ -119,7 +121,7 @@ namespace ar8600
 
             if (is_modulation_set)
             {
-                using (FileStream fs = new FileStream("scan_list.txt", FileMode.Append, FileAccess.Write, FileShare.Read))
+                using (FileStream fs = new FileStream(file_name, FileMode.Append, FileAccess.Write, FileShare.Read))
                 {
                     using (StreamWriter sw = new StreamWriter(fs, Encoding.Unicode))
                     {
@@ -155,5 +157,11 @@ namespace ar8600
             }
 
         }
+
+        private void button_Cancel_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.Cancel;
+        }
+
     }
 }

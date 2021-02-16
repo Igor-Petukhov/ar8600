@@ -40,6 +40,9 @@ namespace ar8600
         static decimal curr_step = -1;
         List<Channel> freq_base = new List<Channel>();
 
+        //Название текстового файла со списком частот для сканирования
+        public static string file_name = "scan_list.txt";
+
         public MainWindow()
         {
             token = cancelTokenSource.Token; //для особой работы с ком портом
@@ -727,7 +730,7 @@ namespace ar8600
 
         private void button_save_frequency_Click(object sender, EventArgs e)
         {
-            Form_frequency_save frequency_Save = new Form_frequency_save(current_frequency);
+            Form_frequency_save frequency_Save = new Form_frequency_save(current_frequency, file_name);
 
             frequency_Save.ShowDialog();
         }
@@ -979,6 +982,33 @@ namespace ar8600
                 MessageBox.Show("Соединение не установлено!");
             }
 
+        }
+
+        private void button_change_freq_list_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                OpenFileDialog open_file = new OpenFileDialog();
+                open_file.InitialDirectory = ".";
+                open_file.Filter = "Text Files|*.txt|All Files|*.*";
+                open_file.FilterIndex = 1;// по умолчанию фильтруются текстовые файлы
+                if (open_file.ShowDialog() == DialogResult.OK)
+                {
+                    file_name = open_file.FileName;
+                    if (Path.GetFileName(open_file.FileName).Length < 15)
+                    {
+                        label_list_freq_name.Text = Path.GetFileName(open_file.FileName);
+                    }
+                    else
+                    {
+                        label_list_freq_name.Text = Path.GetFileName(open_file.FileName).Substring(0,15);
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
     }
 

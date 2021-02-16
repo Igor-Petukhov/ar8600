@@ -39,6 +39,7 @@ public class AR8600
     //        catch (TimeoutException) { }
     //    }
     //}
+    [STAThread] //иначе диалоговое выбора файла не работает
     public static void Main()
     {
         //какие-то важные настройки

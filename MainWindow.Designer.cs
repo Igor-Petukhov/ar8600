@@ -81,6 +81,11 @@ namespace ar8600
             this.radioButton_NFM = new System.Windows.Forms.RadioButton();
             this.radioButton_WFM = new System.Windows.Forms.RadioButton();
             this.textBox_scanner_answer = new System.Windows.Forms.TextBox();
+            this.button_scan = new System.Windows.Forms.Button();
+            this.button_save_frequency = new System.Windows.Forms.Button();
+            this.label_label_name_list = new System.Windows.Forms.Label();
+            this.label_list_freq_name = new System.Windows.Forms.Label();
+            this.button_change_freq_list = new System.Windows.Forms.Button();
             this.groupBox_Level = new System.Windows.Forms.GroupBox();
             this.groupBox_manual_control = new System.Windows.Forms.GroupBox();
             this.label_step = new System.Windows.Forms.Label();
@@ -89,9 +94,9 @@ namespace ar8600
             this.checkBox_ATT = new System.Windows.Forms.CheckBox();
             this.label_mhz = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.button_save_frequency = new System.Windows.Forms.Button();
+            this.groupBox_List_frequency = new System.Windows.Forms.GroupBox();
+            this.groupBox_list = new System.Windows.Forms.GroupBox();
             this.progressBar_s_meter = new ar8600.VerticalProgressBar();
-            this.button_scan = new System.Windows.Forms.Button();
             this.groupBox_settings.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown)).BeginInit();
@@ -100,6 +105,8 @@ namespace ar8600
             this.groupBox_manual_control.SuspendLayout();
             this.groupBox_sound_recording.SuspendLayout();
             this.groupBox_frequency.SuspendLayout();
+            this.groupBox_List_frequency.SuspendLayout();
+            this.groupBox_list.SuspendLayout();
             this.SuspendLayout();
             // 
             // button_set_rs232
@@ -477,7 +484,7 @@ namespace ar8600
             // 
             // button_freq_level
             // 
-            this.button_freq_level.Location = new System.Drawing.Point(436, 364);
+            this.button_freq_level.Location = new System.Drawing.Point(437, 462);
             this.button_freq_level.Name = "button_freq_level";
             this.button_freq_level.Size = new System.Drawing.Size(89, 74);
             this.button_freq_level.TabIndex = 8;
@@ -684,6 +691,59 @@ namespace ar8600
             this.textBox_scanner_answer.Text = "Крайний ответ сканера";
             this.toolTip1.SetToolTip(this.textBox_scanner_answer, "Ответ сканера на команды программы");
             // 
+            // button_scan
+            // 
+            this.button_scan.Location = new System.Drawing.Point(252, 25);
+            this.button_scan.Name = "button_scan";
+            this.button_scan.Size = new System.Drawing.Size(81, 48);
+            this.button_scan.TabIndex = 10;
+            this.button_scan.Text = "Сканировать";
+            this.toolTip1.SetToolTip(this.button_scan, "Начать сканирование списка частот со звукозаписью, если обнаружена активность");
+            this.button_scan.UseVisualStyleBackColor = true;
+            this.button_scan.Click += new System.EventHandler(this.button_scan_Click);
+            // 
+            // button_save_frequency
+            // 
+            this.button_save_frequency.Location = new System.Drawing.Point(6, 25);
+            this.button_save_frequency.Name = "button_save_frequency";
+            this.button_save_frequency.Size = new System.Drawing.Size(75, 48);
+            this.button_save_frequency.TabIndex = 9;
+            this.button_save_frequency.Text = "Добавить частоту в файл";
+            this.toolTip1.SetToolTip(this.button_save_frequency, "Вызвать окно добавления частоты в файл");
+            this.button_save_frequency.UseVisualStyleBackColor = true;
+            this.button_save_frequency.Click += new System.EventHandler(this.button_save_frequency_Click);
+            // 
+            // label_label_name_list
+            // 
+            this.label_label_name_list.AutoSize = true;
+            this.label_label_name_list.Location = new System.Drawing.Point(3, 9);
+            this.label_label_name_list.Name = "label_label_name_list";
+            this.label_label_name_list.Size = new System.Drawing.Size(49, 13);
+            this.label_label_name_list.TabIndex = 11;
+            this.label_label_name_list.Text = "Выбран:";
+            this.toolTip1.SetToolTip(this.label_label_name_list, "Выбранный список частот");
+            // 
+            // label_list_freq_name
+            // 
+            this.label_list_freq_name.AutoSize = true;
+            this.label_list_freq_name.Location = new System.Drawing.Point(50, 9);
+            this.label_list_freq_name.Name = "label_list_freq_name";
+            this.label_list_freq_name.Size = new System.Drawing.Size(62, 13);
+            this.label_list_freq_name.TabIndex = 12;
+            this.label_list_freq_name.Text = "scan_list.txt";
+            this.toolTip1.SetToolTip(this.label_list_freq_name, "Название выбранного файла со списком частот");
+            // 
+            // button_change_freq_list
+            // 
+            this.button_change_freq_list.Location = new System.Drawing.Point(27, 25);
+            this.button_change_freq_list.Name = "button_change_freq_list";
+            this.button_change_freq_list.Size = new System.Drawing.Size(75, 23);
+            this.button_change_freq_list.TabIndex = 13;
+            this.button_change_freq_list.Text = "Изменить";
+            this.toolTip1.SetToolTip(this.button_change_freq_list, "Выбрать другой список частот");
+            this.button_change_freq_list.UseVisualStyleBackColor = true;
+            this.button_change_freq_list.Click += new System.EventHandler(this.button_change_freq_list_Click);
+            // 
             // groupBox_Level
             // 
             this.groupBox_Level.Controls.Add(this.label_Level_minimum);
@@ -799,15 +859,28 @@ namespace ar8600
             this.timer1.Interval = 1000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // button_save_frequency
+            // groupBox_List_frequency
             // 
-            this.button_save_frequency.Location = new System.Drawing.Point(12, 364);
-            this.button_save_frequency.Name = "button_save_frequency";
-            this.button_save_frequency.Size = new System.Drawing.Size(75, 48);
-            this.button_save_frequency.TabIndex = 9;
-            this.button_save_frequency.Text = "Сохранить частоту в базу";
-            this.button_save_frequency.UseVisualStyleBackColor = true;
-            this.button_save_frequency.Click += new System.EventHandler(this.button_save_frequency_Click);
+            this.groupBox_List_frequency.Controls.Add(this.groupBox_list);
+            this.groupBox_List_frequency.Controls.Add(this.button_save_frequency);
+            this.groupBox_List_frequency.Controls.Add(this.button_scan);
+            this.groupBox_List_frequency.Location = new System.Drawing.Point(12, 364);
+            this.groupBox_List_frequency.Name = "groupBox_List_frequency";
+            this.groupBox_List_frequency.Size = new System.Drawing.Size(344, 110);
+            this.groupBox_List_frequency.TabIndex = 11;
+            this.groupBox_List_frequency.TabStop = false;
+            this.groupBox_List_frequency.Text = "Работа со списком частот";
+            // 
+            // groupBox_list
+            // 
+            this.groupBox_list.Controls.Add(this.button_change_freq_list);
+            this.groupBox_list.Controls.Add(this.label_label_name_list);
+            this.groupBox_list.Controls.Add(this.label_list_freq_name);
+            this.groupBox_list.Location = new System.Drawing.Point(99, 20);
+            this.groupBox_list.Name = "groupBox_list";
+            this.groupBox_list.Size = new System.Drawing.Size(131, 53);
+            this.groupBox_list.TabIndex = 14;
+            this.groupBox_list.TabStop = false;
             // 
             // progressBar_s_meter
             // 
@@ -821,25 +894,13 @@ namespace ar8600
             this.progressBar_s_meter.TabIndex = 11;
             this.toolTip1.SetToolTip(this.progressBar_s_meter, "Полученный уровень сигнала от 0 до 255. S-meter.");
             // 
-            // button_scan
-            // 
-            this.button_scan.Location = new System.Drawing.Point(111, 364);
-            this.button_scan.Name = "button_scan";
-            this.button_scan.Size = new System.Drawing.Size(81, 48);
-            this.button_scan.TabIndex = 10;
-            this.button_scan.Text = "Сканировать";
-            this.toolTip1.SetToolTip(this.button_scan, "Начать сканирование списка частот со звукозаписью, если обнаружена активность");
-            this.button_scan.UseVisualStyleBackColor = true;
-            this.button_scan.Click += new System.EventHandler(this.button_scan_Click);
-            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoScroll = true;
             this.ClientSize = new System.Drawing.Size(538, 548);
-            this.Controls.Add(this.button_scan);
-            this.Controls.Add(this.button_save_frequency);
+            this.Controls.Add(this.groupBox_List_frequency);
             this.Controls.Add(this.button_freq_level);
             this.Controls.Add(this.textBox_scanner_answer);
             this.Controls.Add(this.button_get_status);
@@ -865,6 +926,9 @@ namespace ar8600
             this.groupBox_sound_recording.PerformLayout();
             this.groupBox_frequency.ResumeLayout(false);
             this.groupBox_frequency.PerformLayout();
+            this.groupBox_List_frequency.ResumeLayout(false);
+            this.groupBox_list.ResumeLayout(false);
+            this.groupBox_list.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -933,5 +997,10 @@ namespace ar8600
         private System.Windows.Forms.Label label_Level_max;
         private System.Windows.Forms.Button button_save_frequency;
         private System.Windows.Forms.Button button_scan;
+        private System.Windows.Forms.GroupBox groupBox_List_frequency;
+        private System.Windows.Forms.Button button_change_freq_list;
+        private System.Windows.Forms.Label label_list_freq_name;
+        private System.Windows.Forms.Label label_label_name_list;
+        private System.Windows.Forms.GroupBox groupBox_list;
     }
 }
