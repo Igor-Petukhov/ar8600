@@ -43,6 +43,12 @@ namespace ar8600
         //Название текстового файла со списком частот для сканирования
         public static string file_name = "scan_list.txt";
 
+        //Колиечство циклов сканирования списка частот
+        int scan_iterations = 3;
+
+        //Прерывание сканирования
+        bool need_to_continue = true;
+
         public MainWindow()
         {
             token = cancelTokenSource.Token; //для особой работы с ком портом
@@ -73,6 +79,7 @@ namespace ar8600
             waveSource = new WaveInEvent();
             waveSource.WaveFormat = new WaveFormat(44100, 1);
             waveSource.DataAvailable += new EventHandler<WaveInEventArgs>(waveSource_DataAvailable);
+
         }
 
         private void button_set_rs232_Click(object sender, EventArgs e)
@@ -122,7 +129,7 @@ namespace ar8600
                 Console.WriteLine("Считывание завершено.");
             }
         }
-
+        
         private void button_connect_Click(object sender, EventArgs e)
         {
             try
@@ -223,12 +230,14 @@ namespace ar8600
         //выключить сканер
         private void button_turn_off_Click(object sender, EventArgs e)
         {
+            need_to_continue = false;
             Send_to_port("QP\r");
         }
 
         //закрыть соединение
         private void button_disconnect_Click(object sender, EventArgs e)
         {
+            need_to_continue = false;
             Send_to_port("EX\r");
             try
             {
@@ -242,7 +251,7 @@ namespace ar8600
                 progressBar_s_meter.Value = 0;
                 label_Level_current.Text = "0";
                 current_frequency.Squelch = 0;
-                numericUpDown.Value = (decimal)103.3;
+                NumericUpDownSafe(numericUpDown, (decimal)103.3);
         }
 
         /// <summary>
@@ -346,8 +355,18 @@ namespace ar8600
             Console.WriteLine("Ответ");
             Console.WriteLine(Encoding.ASCII.GetString(recvBuffer));
             Console.WriteLine("Принял ответ");
-            textBox_scanner_answer.Text = Encoding.ASCII.GetString(recvBuffer);
+            SetTextSafe(Encoding.ASCII.GetString(recvBuffer));
             return result;
+        }
+
+        //для изменения текстбокса textBox_scanner_answer из другого потока
+        void SetTextSafe(string newText)
+        {
+            if (textBox_scanner_answer.InvokeRequired)
+            {
+                textBox_scanner_answer.Invoke(new Action<string>((s) => textBox_scanner_answer.Text = s), newText);
+            }
+            else textBox_scanner_answer.Text = newText;
         }
 
         private void button_get_status_Click(object sender, EventArgs e)
@@ -445,7 +464,7 @@ namespace ar8600
 
         private void button_set_frequency_Click(object sender, EventArgs e)
         {
-            double d_tmp = double.Parse(numericUpDown.Value.ToString());
+            double d_tmp = double.Parse(NumericUpDownValueSafe(numericUpDown).ToString());
             string tmp = d_tmp.ToString().Replace(',','.');
 
             if ((GetDecimalDigitsCount(d_tmp)) > 5)
@@ -483,7 +502,7 @@ namespace ar8600
             }
             else
             {
-                if ((numericUpDown.Value > 3000) || (double.Parse(numericUpDown.Value.ToString()) < 0.001))
+                if ((NumericUpDownValueSafe(numericUpDown) > 3000) || (double.Parse(NumericUpDownValueSafe(numericUpDown).ToString()) < 0.001))
                 {
                     MessageBox.Show("Частота вне диапазона!");
                     return;
@@ -536,7 +555,7 @@ namespace ar8600
             string tmp = comboBox_step.SelectedItem.ToString().Replace(',', '.');
             double d_tmp = double.Parse(comboBox_step.SelectedItem.ToString());
 
-            numericUpDown.Increment = (decimal)d_tmp / 1000;
+            NumericUpDownSafeIncr(numericUpDown, (decimal)d_tmp / 1000);
 
             if (d_tmp < 100)
             {
@@ -593,6 +612,7 @@ namespace ar8600
 
         private void Update_GUI_part_1()
         {
+            Console.WriteLine("Update_GUI_part_1");
             if (_serialPort.IsOpen)
             {
                 //пока не получим полный ответ, а он может не дойти по каким-то причинам
@@ -619,55 +639,23 @@ namespace ar8600
                 try
                 {
                     //вносим в интерфейс частоту если там выбрана другая
-                    if (numericUpDown.Value != current_frequency.Frequency)
+                    if (NumericUpDownValueSafe(numericUpDown) != current_frequency.Frequency)
                     {
-                        numericUpDown.Value = current_frequency.Frequency;
-                        numericUpDown.Update();
+                        NumericUpDownSafe(numericUpDown, current_frequency.Frequency);
+                        NumericUpDownUpdate(numericUpDown);
                     }
 
-                    //вносим в интерфейс модуляцию
-                    switch (current_frequency.Modulation)
-                    {
-                        case "0":
-                            radioButton_WFM.Checked = true;
-                            break;
-                        case "1":
-                            radioButton_NFM.Checked = true;
-                            break;
-                        case "2":
-                            radioButton_AM.Checked = true;
-                            break;
-                        case "3":
-                            radioButton_USB.Checked = true;
-                            break;
-                        case "4":
-                            radioButton_LSB.Checked = true;
-                            break;
-                        case "5":
-                            radioButton_CW.Checked = true;
-                            break;
-                        case "6":
-                            radioButton_SFM.Checked = true;
-                            break;
-                        case "7":
-                            radioButton_WAM.Checked = true;
-                            break;
-                        case "8":
-                            radioButton_NAM.Checked = true;
-                            break;
-                        default:
-                            break;
-                    }
+                    SetGuiModulation(current_frequency.Modulation);
 
                     //вносим в интерфейс аттенюацию
                     switch (current_frequency.Attenuation)
                     {
                         case "AT0":
-                            checkBox_ATT.Checked = false;
+                            CheckBoxSafe(checkBox_ATT, false);
                             current_frequency.Attenuation = "AT0";
                             break;
                         case "AT1":
-                            checkBox_ATT.Checked = true;
+                            CheckBoxSafe(checkBox_ATT, true);
                             current_frequency.Attenuation = "AT1";
                             break;
                         default:
@@ -677,7 +665,7 @@ namespace ar8600
                     //вносим в интерфейс шаг подстройки частоты если там стоит другой
                     if (curr_step != -1)
                     {
-                        comboBox_step.SelectedItem = curr_step;
+                        SetBoxSafe(curr_step);
                     }
                 }
                 catch (Exception exc)
@@ -690,6 +678,127 @@ namespace ar8600
                 MessageBox.Show("Соединение не установлено!");
             }
         }
+
+        void SetGuiModulation(string modulation)
+        {
+            //вносим в интерфейс модуляцию
+            switch (modulation)
+            {
+                case "0":
+                    RadioButtonSafe(radioButton_WFM, true);
+                    RadioButtonUpdateSafe(radioButton_WFM);
+                    break;
+                case "1":
+                    RadioButtonSafe(radioButton_NFM, true);
+                    RadioButtonUpdateSafe(radioButton_NFM);
+                    break;
+                case "2":
+                    RadioButtonSafe(radioButton_AM, true);
+                    RadioButtonUpdateSafe(radioButton_AM);
+                    break;
+                case "3":
+                    RadioButtonSafe(radioButton_USB, true);
+                    RadioButtonUpdateSafe(radioButton_USB);
+                    break;
+                case "4":
+                    RadioButtonSafe(radioButton_LSB, true);
+                    RadioButtonUpdateSafe(radioButton_LSB);
+                    break;
+                case "5":
+                    RadioButtonSafe(radioButton_CW, true);
+                    RadioButtonUpdateSafe(radioButton_CW);
+                    break;
+                case "6":
+                    RadioButtonSafe(radioButton_SFM, true);
+                    RadioButtonUpdateSafe(radioButton_SFM);
+                    break;
+                case "7":
+                    RadioButtonSafe(radioButton_WAM, true);
+                    RadioButtonUpdateSafe(radioButton_WAM);
+                    break;
+                case "8":
+                    RadioButtonSafe(radioButton_NAM, true);
+                    RadioButtonUpdateSafe(radioButton_NAM);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        //безопасно перерисовать радиокнопку из любого потока
+        void RadioButtonUpdateSafe(RadioButton rb)
+        {
+            if (rb.InvokeRequired)
+            {
+                rb.Invoke(new Action(() => rb.Update()));
+            }
+            else rb.Update();
+        }
+
+        //для доступа к комбобоксу comboBox_step из другого потока
+        void SetBoxSafe(decimal step)
+        {
+            if (comboBox_step.InvokeRequired)
+            {
+                comboBox_step.Invoke(new Action<decimal>((d) => comboBox_step.SelectedItem = d), step);
+            }
+            else comboBox_step.SelectedItem = step;
+        }
+
+        //для доступа к любому комбобоксу из другого потока
+        void CheckBoxSafe(CheckBox box, bool state)
+        {
+            if (box.InvokeRequired)
+            {
+                box.Invoke(new Action<bool>((b) => box.Checked = b), state);
+            }
+            else box.Checked = state;
+        }
+
+        //для доступа к любой радиокнопке из другого потока
+        void RadioButtonSafe(RadioButton btn, bool state)
+        {
+            if (btn.InvokeRequired)
+            {
+                btn.Invoke(new Action<bool>((b) => btn.Checked = b), state);
+            }
+            else btn.Checked = state;
+        }
+
+        //для доступа к numeric_up_down из другого потока
+        void NumericUpDownSafe(NumericUpDown numud, decimal znach)
+        {
+            if (numud.InvokeRequired)
+            {
+                numud.Invoke(new Action<decimal>((d) => numud.Value = d), znach);
+            }
+            else numud.Value = znach;
+        }
+        decimal NumericUpDownValueSafe(NumericUpDown numud)
+        {
+            if (numud.InvokeRequired)
+            {
+                return (decimal)numud.Invoke(new Func<decimal>(() => numud.Value));
+            }
+            else return numud.Value;
+        }
+        void NumericUpDownSafeIncr(NumericUpDown numud, decimal incr)
+        {
+            if (numud.InvokeRequired)
+            {
+                numud.Invoke(new Action<decimal>((d) => numud.Increment = d), incr);
+            }
+            else numud.Increment = incr;
+        }
+        void NumericUpDownUpdate(NumericUpDown numud)
+        {
+            if (numud.InvokeRequired)
+            {
+                numud.Invoke(new Action(() => numud.Update()));
+            }
+            else numud.Update();
+        }
+
 
         private void Update_GUI_part_2_signal_level()
         {
@@ -713,9 +822,9 @@ namespace ar8600
                 try
                 {
                     string tmp_str = Encoding.ASCII.GetString(receive_data).Remove(0, 3);
-                    label_Level_current.Text = tmp_str;
+                    label_text_update_safe(label_Level_current, tmp_str);
                     current_frequency.Squelch = Int32.Parse(tmp_str);
-                    progressBar_s_meter.Value = current_frequency.Squelch;
+                    progress_bar_level_update_safe(progressBar_s_meter, current_frequency.Squelch);
                 }
                 catch (Exception exc)
                 {
@@ -727,6 +836,27 @@ namespace ar8600
                 MessageBox.Show("Соединение не установлено!");
             }
         }
+
+        //Безопасно обновляет label.text из разных потоков
+        void label_text_update_safe(Label label, string new_text)
+        {
+            if (label.InvokeRequired)
+            {
+                label.Invoke(new Action<string>((s) => label.Text = s), new_text);
+            }
+            else label.Text = new_text;
+        }
+
+        //Безопасно обновляет progressBar.value из разных потоков
+        void progress_bar_level_update_safe(ProgressBar pb, int val)
+        {
+            if (pb.InvokeRequired)
+            {
+                pb.Invoke(new Action<int>((s) => pb.Value = s), val);
+            }
+            else pb.Value = val;
+        }
+
 
         private void button_save_frequency_Click(object sender, EventArgs e)
         {
@@ -773,215 +903,264 @@ namespace ar8600
             }
         }
 
-        private void button_scan_Click(object sender, EventArgs e)
+        private void scan()
         {
             //Считываем в память файл со списком частот для сканирования
-            if (File.Exists("scan_list.txt"))
+            if (File.Exists(file_name))
             {
-                try
-                {
-                    freq_base.Clear();
-                    using (FileStream fs = new FileStream("scan_list.txt", FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        using (StreamReader sr = new StreamReader(fs, Encoding.Unicode))
-                        {
-                            string[] arr_str_tmp;
-                            while (!sr.EndOfStream)
-                            {
-                                arr_str_tmp = sr.ReadLine().Split('\t');
-                                freq_base.Add(new Channel(decimal.Parse(arr_str_tmp[0]), arr_str_tmp[1], arr_str_tmp[2], Int32.Parse(arr_str_tmp[3])));
-                                Console.WriteLine(arr_str_tmp[0]);
-                                Console.WriteLine(arr_str_tmp[1]);
-                                Console.WriteLine(arr_str_tmp[2]);
-                                Console.WriteLine(arr_str_tmp[3]);
-                                Console.WriteLine("====================");
-                            }
-                        }
-                    }
-                }
-                catch (Exception ExReadFreqBase)
-                {
-                    Console.WriteLine(ExReadFreqBase.Message);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Не удаётся найти файл \"scan_list.txt\"");
-            }
-
-            if (_serialPort.IsOpen)
-            {
-                //Узнаём какие сейчас выставлены параметры в сканере
-                Update_GUI_part_1(); //Считает со сканера данные в current_frequency
-                Console.WriteLine(current_frequency.Frequency);
-                Console.WriteLine(current_frequency.Modulation);
-                Console.WriteLine(current_frequency.Attenuation);
-
-                //Включаем ответ с уровнем сигнала после каждой перестройки частоты
-                for (int i = 0; i < retry; i++)
-                {
-                    Send_to_port("LC1\r\n");
-                    Send_to_port("LC\r\n"); //запрошу ответ, так надёжнее. Иначе приходит ответ \r\n
-                    if (Encoding.ASCII.GetString(receive_data).Substring(0, 2) == "LC")
-                        break;
-                    if (i == retry - 1)
-                    {
-                        MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
-                        return;
-                    }
-                }
-
-                for (int j = 0; j < 10; j++) //Кол-во итераций сканирования. В будущем доработать какой-то токен завершения сканирования!!!!!!!!
+                if (new FileInfo(file_name).Length != 0)
                 {
                     try
                     {
-                        for (int counter = 0; counter < freq_base.Count; counter++)
+                        freq_base.Clear();
+                        using (FileStream fs = new FileStream(file_name, FileMode.Open, FileAccess.Read, FileShare.Read))
                         {
-                            //Сравниваем считаные параметры с необходимыми параметрами для первой частоты
-                            //Если есть отличия - настраиваем сначала параметры
-                            if (freq_base[counter].Attenuation != current_frequency.Attenuation)
+                            using (StreamReader sr = new StreamReader(fs, Encoding.Unicode))
                             {
-                                switch (freq_base[counter].Attenuation)
+                                string[] arr_str_tmp;
+                                while (!sr.EndOfStream)
                                 {
-                                    case "AT0":
-                                        for (int i = 0; i < retry; i++)
-                                        {
-                                            Send_to_port("AT0\r");
-                                            Update_GUI_part_1();
-                                            if (freq_base[counter].Attenuation == current_frequency.Attenuation)
-                                                break;
-                                            if (i == retry - 1)
-                                            {
-                                                MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
-                                                return;
-                                            }
-                                        }
-                                        break;
-                                    case "AT1":
-                                        for (int i = 0; i < retry; i++)
-                                        {
-                                            Send_to_port("AT1\r");
-                                            Update_GUI_part_1();
-                                            if (freq_base[counter].Attenuation == current_frequency.Attenuation)
-                                                break;
-                                            if (i == retry - 1)
-                                            {
-                                                MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
-                                                return;
-                                            }
-                                        }
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-
-                            if (freq_base[counter].Modulation != "MD" + current_frequency.Modulation)
-                            {
-                                for (int i = 0; i < retry; i++)
-                                {
-                                    Send_to_port(freq_base[counter].Modulation + "\r\n");
-                                    Update_GUI_part_1();
-                                    if (freq_base[counter].Modulation == "MD" + current_frequency.Modulation)
-                                        break;
-                                    if (i == retry - 1)
-                                    {
-                                        MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
-                                        return;
-                                    }
-                                }
-                            }
-
-                            if (freq_base[counter].Frequency != current_frequency.Frequency)
-                            {
-                                double d_tmp = (double)freq_base[counter].Frequency;
-                                string tmp = d_tmp.ToString().Replace(',', '.');
-
-                                if ((GetDecimalDigitsCount(d_tmp)) > 5)
-                                {
-                                    MessageBox.Show("Точность настройки частоты " + d_tmp.ToString() + " должна иметь " +
-                                        "не более 5-ти знаков после запятой. Причём, пятый знак " +
-                                        "может быть либо \"0\", либо \"5\" - это означает, что частота " +
-                                        "кончается на 50 Гц или 0 Гц.");
-                                    return;
-                                }
-                                if ((GetDecimalDigitsCount(d_tmp)) == 5)
-                                    tmp += "0";
-                                if ((GetDecimalDigitsCount(d_tmp)) == 4)
-                                    tmp += "00";
-                                if ((GetDecimalDigitsCount(d_tmp)) == 3)
-                                    tmp += "000";
-                                if ((GetDecimalDigitsCount(d_tmp)) == 2)
-                                    tmp += "0000";
-                                if ((GetDecimalDigitsCount(d_tmp)) == 1)
-                                    tmp += "00000";
-                                if ((GetDecimalDigitsCount(d_tmp)) == 0)
-                                    tmp += ".00000";
-
-                                if (d_tmp < 1000)
-                                {
-                                    tmp = "0" + tmp;
-                                    if (d_tmp < 100)
-                                    {
-                                        tmp = "0" + tmp;
-                                        if (d_tmp < 10)
-                                        {
-                                            tmp = "0" + tmp;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if ((freq_base[counter].Frequency > 3000) || ((double)freq_base[counter].Frequency < 0.001))
-                                    {
-                                        MessageBox.Show("Частота вне диапазона!");
-                                        return;
-                                    }
-                                }
-
-                                for (int i = 0; i < retry; i++)
-                                {
-                                    //Настраиваемся на частоту
-                                    Send_to_port("RF" + tmp + "\r");
-                                    current_frequency.Frequency = decimal.Parse(Encoding.ASCII.GetString(receive_data).Substring(13, 4) + "," + Encoding.ASCII.GetString(receive_data).Substring(17, 6));
-                                    if (freq_base[counter].Frequency == current_frequency.Frequency)
-                                        break;
-                                    if (i == retry - 1)
-                                    {
-                                        MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
-                                        return;
-                                    }
-                                }
-
-                                current_frequency.Squelch = Int32.Parse(Encoding.ASCII.GetString(receive_data).Substring(4, 3));
-                                Console.WriteLine(Encoding.ASCII.GetString(receive_data).Substring(4, 3));
-
-                                //Если получили уровень сигнала выше, чем в базе - то записать звук
-                                if (freq_base[counter].Squelch < current_frequency.Squelch)
-                                {
-                                    Console.WriteLine("-------start audio recording for 3 seconds------");
-                                    if (!Directory.Exists("Recordings"))
-                                        Directory.CreateDirectory("Recordings");
-                                    waveFile = new WaveFileWriter("Recordings\\" + "Record_" + current_frequency.Frequency + "MHz_" + DateTime.Now.ToString().Replace(" ", "_").Replace(":", "'") + ".wav", waveSource.WaveFormat);
-                                    waveSource.StartRecording();
-                                    Thread.Sleep(3000);
-                                    waveSource.StopRecording();
-                                    waveFile.Dispose();
+                                    arr_str_tmp = sr.ReadLine().Split('\t');
+                                    freq_base.Add(new Channel(decimal.Parse(arr_str_tmp[0]), arr_str_tmp[1], arr_str_tmp[2], Int32.Parse(arr_str_tmp[3])));
+                                    Console.WriteLine(arr_str_tmp[0]);
+                                    Console.WriteLine(arr_str_tmp[1]);
+                                    Console.WriteLine(arr_str_tmp[2]);
+                                    Console.WriteLine(arr_str_tmp[3]);
+                                    Console.WriteLine("====================");
                                 }
                             }
                         }
                     }
-                    catch (System.FormatException err)
+                    catch (Exception ExReadFreqBase)
                     {
-                        MessageBox.Show(err.Message + " Проверь положение регулятора SQL (squelch) на сканере! Он должен стоять в положении минимум! (Выкрути до упора ПРОТИВ часовой стрелки)");
+                        Console.WriteLine(ExReadFreqBase.Message);
                     }
+
+                    if (_serialPort.IsOpen)
+                    {
+                        //Узнаём какие сейчас выставлены параметры в сканере
+                        Update_GUI_part_1(); //Считает со сканера данные в current_frequency
+                        Console.WriteLine(current_frequency.Frequency);
+                        Console.WriteLine(current_frequency.Modulation);
+                        Console.WriteLine(current_frequency.Attenuation);
+
+                        //Включаем ответ с уровнем сигнала после каждой перестройки частоты
+                        for (int i = 0; i < retry; i++)
+                        {
+                            Send_to_port("LC1\r\n");
+                            Send_to_port("LC\r\n"); //запрошу ответ, так надёжнее. Иначе приходит ответ \r\n
+                            if (Encoding.ASCII.GetString(receive_data).Substring(0, 2) == "LC")
+                                break;
+                            if (i == retry - 1)
+                            {
+                                MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
+                                return;
+                            }
+                        }
+
+                        while (need_to_continue) //Кол-во итераций прохода по списку
+                        {
+                            Console.WriteLine("next scan iteration=======================начало списка сканирования===");
+                            try
+                            {
+                                for (int counter = 0; counter < freq_base.Count; counter++)
+                                {
+                                    if (need_to_continue) //перебор каждой частоты
+                                    {
+
+                                        //Сравниваем считаные параметры с необходимыми параметрами для первой частоты
+                                        //Если есть отличия - настраиваем сначала параметры
+                                        if (freq_base[counter].Attenuation != current_frequency.Attenuation)
+                                        {
+                                            switch (freq_base[counter].Attenuation)
+                                            {
+                                                case "AT0":
+                                                    for (int i = 0; i < retry; i++)
+                                                    {
+                                                        Send_to_port("AT0\r");
+                                                        Update_GUI_part_1();
+                                                        if (freq_base[counter].Attenuation == current_frequency.Attenuation)
+                                                            break;
+                                                        if (i == retry - 1)
+                                                        {
+                                                            MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
+                                                            return;
+                                                        }
+                                                    }
+                                                    break;
+                                                case "AT1":
+                                                    for (int i = 0; i < retry; i++)
+                                                    {
+                                                        Send_to_port("AT1\r");
+                                                        Update_GUI_part_1();
+                                                        if (freq_base[counter].Attenuation == current_frequency.Attenuation)
+                                                            break;
+                                                        if (i == retry - 1)
+                                                        {
+                                                            MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
+                                                            return;
+                                                        }
+                                                    }
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+
+                                        if (freq_base[counter].Modulation != "MD" + current_frequency.Modulation)
+                                        {
+                                            for (int i = 0; i < retry; i++)
+                                            {
+                                                //Быстренько нарисуем модуляцию, что бы было красиво, а затем проверим её
+                                                SetGuiModulation(freq_base[counter].Modulation.Substring(2));
+
+                                                Send_to_port(freq_base[counter].Modulation + "\r\n");
+                                                //По настоящему проверяем и вносим в интерфейс модуляцию
+                                                Update_GUI_part_1();
+                                                if (freq_base[counter].Modulation == "MD" + current_frequency.Modulation)
+                                                    break;
+                                                if (i == retry - 1)
+                                                {
+                                                    MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
+                                                    return;
+                                                }
+                                            }
+                                        }
+
+                                        if (freq_base[counter].Frequency != current_frequency.Frequency)
+                                        {
+                                            double d_tmp = (double)freq_base[counter].Frequency;
+                                            string tmp = d_tmp.ToString().Replace(',', '.');
+
+                                            if ((GetDecimalDigitsCount(d_tmp)) > 5)
+                                            {
+                                                MessageBox.Show("Точность настройки частоты " + d_tmp.ToString() + " должна иметь " +
+                                                    "не более 5-ти знаков после запятой. Причём, пятый знак " +
+                                                    "может быть либо \"0\", либо \"5\" - это означает, что частота " +
+                                                    "кончается на 50 Гц или 0 Гц.");
+                                                return;
+                                            }
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 5)
+                                                tmp += "0";
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 4)
+                                                tmp += "00";
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 3)
+                                                tmp += "000";
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 2)
+                                                tmp += "0000";
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 1)
+                                                tmp += "00000";
+                                            if ((GetDecimalDigitsCount(d_tmp)) == 0)
+                                                tmp += ".00000";
+
+                                            if (d_tmp < 1000)
+                                            {
+                                                tmp = "0" + tmp;
+                                                if (d_tmp < 100)
+                                                {
+                                                    tmp = "0" + tmp;
+                                                    if (d_tmp < 10)
+                                                    {
+                                                        tmp = "0" + tmp;
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if ((freq_base[counter].Frequency > 3000) || ((double)freq_base[counter].Frequency < 0.001))
+                                                {
+                                                    MessageBox.Show("Частота вне диапазона!");
+                                                    return;
+                                                }
+                                            }
+
+                                            NumericUpDownSafe(numericUpDown, freq_base[counter].Frequency);
+                                            NumericUpDownUpdate(numericUpDown);
+
+                                            for (int i = 0; i < retry; i++)
+                                            {
+                                                //Настраиваемся на частоту
+                                                Send_to_port("RF" + tmp + "\r");
+                                                current_frequency.Frequency = decimal.Parse(Encoding.ASCII.GetString(receive_data).Substring(13, 4) + "," + Encoding.ASCII.GetString(receive_data).Substring(17, 6));
+                                                if (freq_base[counter].Frequency == current_frequency.Frequency)
+                                                {
+                                                    //вносим в интерфейс частоту если там выбрана другая
+                                                    if (NumericUpDownValueSafe(numericUpDown) != current_frequency.Frequency)
+                                                    {
+                                                        NumericUpDownSafe(numericUpDown, current_frequency.Frequency);
+                                                        NumericUpDownUpdate(numericUpDown);
+                                                    }
+                                                    break;
+                                                }
+                                                if (i == retry - 1)
+                                                {
+                                                    MessageBox.Show("Похоже, соединение прервано. Проверьте соединительный кабель.");
+                                                    return;
+                                                }
+                                            }
+
+                                            current_frequency.Squelch = Int32.Parse(Encoding.ASCII.GetString(receive_data).Substring(4, 3));
+                                            Console.WriteLine(Encoding.ASCII.GetString(receive_data).Substring(4, 3));
+
+                                            //Вносим уровень сигнала в интерфейс
+                                            try
+                                            {
+                                                label_text_update_safe(label_Level_current, current_frequency.Squelch.ToString());
+                                                progress_bar_level_update_safe(progressBar_s_meter, current_frequency.Squelch);
+                                            }
+                                            catch (Exception exc)
+                                            {
+                                                Console.WriteLine(exc.Message);
+                                            }
+
+                                            //Если получили уровень сигнала выше, чем в базе - то записать звук
+                                            if (freq_base[counter].Squelch < current_frequency.Squelch)
+                                            {
+                                                Console.WriteLine("-------start audio recording for 3 seconds------");
+                                                if (!Directory.Exists("Recordings"))
+                                                    Directory.CreateDirectory("Recordings");
+                                                waveFile = new WaveFileWriter("Recordings\\" + "Record_" + current_frequency.Frequency + "MHz_" + DateTime.Now.ToString().Replace(" ", "_").Replace(":", "'") + ".wav", waveSource.WaveFormat);
+                                                waveSource.StartRecording();
+                                                Thread.Sleep(3000);
+                                                waveSource.StopRecording();
+                                                waveFile.Dispose();
+                                            }
+                                        }
+
+                                    }    
+                                    
+                                }
+                            }
+                            catch (System.FormatException err)
+                            {
+                                MessageBox.Show(err.Message + " Проверь положение регулятора SQL (squelch) на сканере! Он должен стоять в положении минимум! (Выкрути до упора ПРОТИВ часовой стрелки)");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Соединение не установлено!");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Файл " + file_name + " пуст.");
                 }
             }
             else
             {
-                MessageBox.Show("Соединение не установлено!");
+                MessageBox.Show("Не удаётся найти файл " + file_name);
             }
+        }
 
+        private void button_scan_Click(object sender, EventArgs e)
+        {
+            need_to_continue = true;
+
+            //Создадим фоновый поток для выполнения сканирования
+            Thread scan_thread = new Thread(scan);
+            scan_thread.IsBackground = true;
+            scan_thread.Start();
         }
 
         private void button_change_freq_list_Click(object sender, EventArgs e)
@@ -1009,6 +1188,11 @@ namespace ar8600
             {
                 MessageBox.Show(exc.Message);
             }
+        }
+
+        private void button_scan_stop_Click(object sender, EventArgs e)
+        {
+            need_to_continue = false;
         }
     }
 

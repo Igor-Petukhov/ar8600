@@ -96,6 +96,7 @@ namespace ar8600
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.groupBox_List_frequency = new System.Windows.Forms.GroupBox();
             this.groupBox_list = new System.Windows.Forms.GroupBox();
+            this.button_scan_stop = new System.Windows.Forms.Button();
             this.progressBar_s_meter = new ar8600.VerticalProgressBar();
             this.groupBox_settings.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -693,11 +694,11 @@ namespace ar8600
             // 
             // button_scan
             // 
-            this.button_scan.Location = new System.Drawing.Point(252, 25);
+            this.button_scan.Location = new System.Drawing.Point(256, 13);
             this.button_scan.Name = "button_scan";
-            this.button_scan.Size = new System.Drawing.Size(81, 48);
+            this.button_scan.Size = new System.Drawing.Size(83, 29);
             this.button_scan.TabIndex = 10;
-            this.button_scan.Text = "Сканировать";
+            this.button_scan.Text = "Старт";
             this.toolTip1.SetToolTip(this.button_scan, "Начать сканирование списка частот со звукозаписью, если обнаружена активность");
             this.button_scan.UseVisualStyleBackColor = true;
             this.button_scan.Click += new System.EventHandler(this.button_scan_Click);
@@ -735,7 +736,7 @@ namespace ar8600
             // 
             // button_change_freq_list
             // 
-            this.button_change_freq_list.Location = new System.Drawing.Point(27, 25);
+            this.button_change_freq_list.Location = new System.Drawing.Point(36, 25);
             this.button_change_freq_list.Name = "button_change_freq_list";
             this.button_change_freq_list.Size = new System.Drawing.Size(75, 23);
             this.button_change_freq_list.TabIndex = 13;
@@ -861,12 +862,13 @@ namespace ar8600
             // 
             // groupBox_List_frequency
             // 
+            this.groupBox_List_frequency.Controls.Add(this.button_scan_stop);
             this.groupBox_List_frequency.Controls.Add(this.groupBox_list);
             this.groupBox_List_frequency.Controls.Add(this.button_save_frequency);
             this.groupBox_List_frequency.Controls.Add(this.button_scan);
             this.groupBox_List_frequency.Location = new System.Drawing.Point(12, 364);
             this.groupBox_List_frequency.Name = "groupBox_List_frequency";
-            this.groupBox_List_frequency.Size = new System.Drawing.Size(344, 110);
+            this.groupBox_List_frequency.Size = new System.Drawing.Size(344, 84);
             this.groupBox_List_frequency.TabIndex = 11;
             this.groupBox_List_frequency.TabStop = false;
             this.groupBox_List_frequency.Text = "Работа со списком частот";
@@ -878,9 +880,20 @@ namespace ar8600
             this.groupBox_list.Controls.Add(this.label_list_freq_name);
             this.groupBox_list.Location = new System.Drawing.Point(99, 20);
             this.groupBox_list.Name = "groupBox_list";
-            this.groupBox_list.Size = new System.Drawing.Size(131, 53);
+            this.groupBox_list.Size = new System.Drawing.Size(141, 53);
             this.groupBox_list.TabIndex = 14;
             this.groupBox_list.TabStop = false;
+            // 
+            // button_scan_stop
+            // 
+            this.button_scan_stop.Location = new System.Drawing.Point(256, 49);
+            this.button_scan_stop.Name = "button_scan_stop";
+            this.button_scan_stop.Size = new System.Drawing.Size(83, 29);
+            this.button_scan_stop.TabIndex = 6;
+            this.button_scan_stop.Text = "Стоп";
+            this.toolTip1.SetToolTip(this.button_scan_stop, "Прекратить сканирование");
+            this.button_scan_stop.UseVisualStyleBackColor = true;
+            this.button_scan_stop.Click += new System.EventHandler(this.button_scan_stop_Click);
             // 
             // progressBar_s_meter
             // 
@@ -1002,5 +1015,6 @@ namespace ar8600
         private System.Windows.Forms.Label label_list_freq_name;
         private System.Windows.Forms.Label label_label_name_list;
         private System.Windows.Forms.GroupBox groupBox_list;
+        private System.Windows.Forms.Button button_scan_stop;
     }
 }
